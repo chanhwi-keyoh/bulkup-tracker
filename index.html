@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>벌크업 트래커</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0f1923; --card: #1a2733; --card2: #223344;
+  --accent: #4CAF50; --accent2: #FF9800; --accent3: #2196F3;
+  --text: #e8eaed; --text2: #9aa0a6; --text3: #5f6368;
+  --border: #2d3e50; --danger: #e53935;
+}
+body { font-family: -apple-system, 'Pretendard', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #1a3a2a, #0f2520); padding: 20px 16px 16px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header .sub { font-size: 12px; color: var(--accent); margin-top: 4px; }
+.date-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.date-nav button { background: var(--card2); border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.date-nav .current-date { font-size: 15px; font-weight: 600; }
+.date-nav .weekday { font-size: 12px; color: var(--accent2); margin-left: 6px; }
+.progress-wrap { margin-top: 12px; }
+.progress-bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #81C784); border-radius: 3px; transition: width 0.4s ease; }
+.progress-text { font-size: 11px; color: var(--text2); margin-top: 4px; text-align: right; }
+
+/* Section */
+.section { padding: 12px 16px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+/* Meal cards */
+.meal-card { background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border); transition: all 0.2s; }
+.meal-card.checked { border-color: var(--accent); background: linear-gradient(135deg, rgba(76,175,80,0.08), var(--card)); }
+.meal-top { display: flex; align-items: center; justify-content: space-between; }
+.meal-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+.meal-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.meal-name { font-size: 14px; font-weight: 600; }
+.meal-time { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.check-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--text3); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.check-btn.active { background: var(--accent); border-color: var(--accent); }
+.check-btn.active::after { content: ''; display: block; width: 8px; height: 14px; border: solid white; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translateY(-1px); }
+.meal-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: none; }
+.meal-card.expanded .meal-details { display: block; }
+.meal-item { font-size: 12px; color: var(--text2); padding: 4px 0; display: flex; justify-content: space-between; }
+.meal-item span:last-child { color: var(--text3); }
+
+/* Workout card */
+.workout-card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); margin-bottom: 10px; }
+.workout-card.checked { border-color: var(--accent2); background: linear-gradient(135deg, rgba(255,152,0,0.08), var(--card)); }
+.workout-header { display: flex; align-items: center; justify-content: space-between; }
+.workout-type { font-size: 15px; font-weight: 700; color: var(--accent2); }
+.workout-exercises { margin-top: 10px; }
+.exercise-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(45,62,80,0.5); }
+.exercise-row:last-child { border: none; }
+.ex-check { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--text3); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.ex-check.active { background: var(--accent2); border-color: var(--accent2); }
+.ex-check.active::after { content: ''; display: block; width: 6px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-1px); }
+.ex-name { font-size: 13px; flex: 1; }
+.ex-detail { font-size: 11px; color: var(--text2); }
+
+/* Weight & Water */
+.input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.input-card { flex: 1; background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid var(--border); text-align: center; }
+.input-card label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 8px; }
+.input-card input { width: 100%; background: var(--card2); border: 1px solid var(--border); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; padding: 8px; border-radius: 10px; outline: none; }
+.input-card input:focus { border-color: var(--accent); }
+.input-card .unit { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.water-btns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.water-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--card2); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.water-btn:active { background: var(--accent3); }
+.memo-card { background: var(--card); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); margin-bottom: 10px; }
+.memo-card textarea { width: 100%; background: transparent; border: none; color: var(--text); font-size: 13px; resize: none; outline: none; min-height: 50px; font-family: inherit; }
+
+/* Summary bar */
+.summary-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; justify-content: space-around; z-index: 100; }
+.summary-item { text-align: center; }
+.summary-item .val { font-size: 18px; font-weight: 700; }
+.summary-item .lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.summary-item .val.green { color: var(--accent); }
+.summary-item .val.orange { color: var(--accent2); }
+.summary-item .val.blue { color: var(--accent3); }
+.streak-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,152,0,0.15); color: var(--accent2); padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 8px; }
+
+/* ======== CALENDAR STYLES ======== */
+.cal-section { padding: 0 16px 12px; }
+.cal-container { background: var(--card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+
+/* Tab toggle */
+.cal-tabs { display: flex; background: var(--card2); }
+.cal-tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
+.cal-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(76,175,80,0.06); }
+
+/* Calendar nav */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; }
+.cal-nav-btn { background: none; border: 1px solid var(--border); color: var(--text); width: 30px; height: 30px; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cal-nav-btn:active { background: var(--card2); }
+.cal-nav-title { font-size: 14px; font-weight: 700; }
+.cal-nav .today-btn { font-size: 11px; color: var(--accent); background: rgba(76,175,80,0.12); border: none; padding: 4px 10px; border-radius: 12px; cursor: pointer; margin-left: 8px; font-weight: 600; }
+
+/* Weekly view */
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 8px 10px 6px; }
+.week-day-label { text-align: center; font-size: 10px; color: var(--text3); font-weight: 600; padding-bottom: 4px; }
+.week-day-label.sun { color: var(--danger); }
+.week-cell { text-align: center; padding: 6px 2px; border-radius: 10px; cursor: pointer; transition: all 0.15s; position: relative; }
+.week-cell:active { transform: scale(0.95); }
+.week-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.week-cell.selected { background: rgba(76,175,80,0.18); }
+.week-cell .day-num { font-size: 13px; font-weight: 600; line-height: 1; }
+.week-cell .day-num.sun { color: var(--danger); }
+.week-cell .day-num.other-month { color: var(--text3); opacity: 0.4; }
+
+/* Dots under day number */
+.week-cell .dots { display: flex; gap: 3px; justify-content: center; margin-top: 5px; height: 6px; }
+.week-cell .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot.meal { background: var(--accent); }
+.dot.workout { background: var(--accent2); }
+.dot.empty { background: var(--text3); opacity: 0.3; }
+
+/* Score bar under day */
+.week-cell .score-bar { height: 3px; border-radius: 2px; margin: 5px 3px 0; background: var(--card2); overflow: hidden; }
+.week-cell .score-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+/* Week detail strip */
+.week-detail { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.week-stats { display: flex; justify-content: space-around; }
+.week-stat { text-align: center; }
+.week-stat .ws-val { font-size: 20px; font-weight: 800; }
+.week-stat .ws-lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Monthly view */
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 8px 10px 12px; }
+.month-cell { text-align: center; padding: 4px 0; border-radius: 8px; cursor: pointer; transition: all 0.15s; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.month-cell:active { transform: scale(0.93); }
+.month-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.month-cell.selected { background: rgba(76,175,80,0.18); }
+.month-cell .day-num { font-size: 12px; font-weight: 600; line-height: 1; }
+.month-cell .day-num.sun { color: var(--danger); }
+.month-cell .day-num.other-month { color: var(--text3); opacity: 0.3; }
+.month-cell .ring { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
+
+/* Achievement ring */
+.ring-bg { position: absolute; inset: 0; border-radius: 50%; }
+.ring-bg.lv0 { background: transparent; }
+.ring-bg.lv1 { background: rgba(76,175,80,0.12); }
+.ring-bg.lv2 { background: rgba(76,175,80,0.25); }
+.ring-bg.lv3 { background: rgba(76,175,80,0.45); }
+.ring-bg.lv4 { background: var(--accent); }
+.ring-bg.lv4 + .day-num { color: #fff !important; }
+
+/* Month detail strip */
+.month-detail { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.month-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.month-stat-card { background: var(--card2); border-radius: 10px; padding: 10px 12px; }
+.month-stat-card .ms-lbl { font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+.month-stat-card .ms-val { font-size: 16px; font-weight: 700; }
+.month-stat-card .ms-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Legend */
+.cal-legend { display: flex; gap: 12px; justify-content: center; padding: 8px 14px 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+/* Weight mini chart */
+.weight-chart { padding: 8px 14px 12px; }
+.weight-chart-title { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+.chart-svg { width: 100%; height: 60px; }
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0f1923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="벌크업 트래커">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;">
+    <h1>벌크업 트래커</h1>
+    <span class="streak-badge" id="streakBadge">0일 연속</span>
+  </div>
+  <div class="sub">56.6kg → 66.6kg | 목표 +2kg/월</div>
+  <div class="date-nav">
+    <button onclick="changeDate(-1)">&#8249;</button>
+    <div>
+      <span class="current-date" id="currentDate"></span>
+      <span class="weekday" id="weekday"></span>
+    </div>
+    <button onclick="changeDate(1)">&#8250;</button>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="dayProgress"></div></div>
+    <div class="progress-text" id="progressText">0 / 0 완료</div>
+  </div>
+</div>
+
+<!-- ======== CALENDAR VIEW ======== -->
+<div class="cal-section">
+  <div class="cal-container">
+    <div class="cal-tabs">
+      <div class="cal-tab active" id="tabWeek" onclick="switchCalView('week')">1주</div>
+      <div class="cal-tab" id="tabMonth" onclick="switchCalView('month')">1달</div>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="navCal(-1)">&#8249;</button>
+      <div style="display:flex;align-items:center;">
+        <span class="cal-nav-title" id="calNavTitle"></span>
+        <button class="today-btn" onclick="goToday()">오늘</button>
+      </div>
+      <button class="cal-nav-btn" onclick="navCal(1)">&#8250;</button>
+    </div>
+    <div id="calWeekView">
+      <div class="week-grid" id="weekDayLabels"></div>
+      <div class="week-grid" id="weekCells"></div>
+      <div class="week-detail" id="weekDetail"></div>
+    </div>
+    <div id="calMonthView" style="display:none;">
+      <div class="month-grid" id="monthDayLabels"></div>
+      <div class="month-grid" id="monthCells"></div>
+      <div class="cal-legend" id="monthLegend"></div>
+      <div class="weight-chart" id="weightChartWrap" style="display:none;">
+        <div class="weight-chart-title" id="weightChartTitle"></div>
+        <svg class="chart-svg" id="weightChartSvg"></svg>
+      </div>
+      <div class="month-detail" id="monthDetail"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">식단 체크</div>
+  <div id="mealCards"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">오늘의 운동</div>
+  <div id="workoutCard"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">기록</div>
+  <div class="input-row">
+    <div class="input-card">
+      <label>체중</label>
+      <input type="number" step="0.1" id="weightInput" placeholder="0.0" oninput="saveData()">
+      <div class="unit">kg</div>
+    </div>
+    <div class="input-card">
+      <label>수분 섭취</label>
+      <input type="number" step="0.1" id="waterInput" placeholder="0.0" readonly>
+      <div class="unit">L</div>
+      <div class="water-btns">
+        <button class="water-btn" onclick="adjustWater(-0.3)">-</button>
+        <button class="water-btn" onclick="adjustWater(0.3)">+</button>
+      </div>
+    </div>
+  </div>
+  <div class="memo-card">
+    <textarea id="memoInput" placeholder="오늘의 메모 (컨디션, 특이사항 등)" oninput="saveData()"></textarea>
+  </div>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-item"><div class="val green" id="sumMeals">0/5</div><div class="lbl">식사</div></div>
+  <div class="summary-item"><div class="val orange" id="sumWorkout">-</div><div class="lbl">운동</div></div>
+  <div class="summary-item"><div class="val blue" id="sumWater">0L</div><div class="lbl">수분</div></div>
+  <div class="summary-item"><div class="val" id="sumWeight" style="color:var(--text)">-</div><div class="lbl">체중</div></div>
+</div>
+
+<script>
+const MEALS = [
+  { name: '아침', time: '07:00~08:00', kcal: 960, color: '#FF7043', emoji: '🌅',
+    items: ['현미밥 1공기 (310kcal)','계란 3개 스크램블 (210kcal)','닭가슴살 소시지 2개 (140kcal)','바나나 1개 (105kcal)','우유 300ml (195kcal)'] },
+  { name: '점심', time: '12:00~13:00', kcal: 860, color: '#FFA726', emoji: '🍚',
+    items: ['현미밥 1.5공기 (465kcal)','닭가슴살/소고기 200g (260kcal)','채소 반찬 2가지 (60kcal)','김치/나물 (30kcal)','된장국/미역국 (45kcal)'] },
+  { name: '간식 (운동 전)', time: '15:00~16:00', kcal: 560, color: '#FFCA28', emoji: '🍠',
+    items: ['고구마 1개 200g (260kcal)','프로틴 쉐이크 1스쿱 (120kcal)','견과류 한줌 30g (180kcal)'] },
+  { name: '저녁 (운동 후)', time: '19:00~20:00', kcal: 980, color: '#66BB6A', emoji: '🥩',
+    items: ['현미밥 1공기 (310kcal)','연어/고등어 150g (270kcal)','두부 반모 (120kcal)','채소 샐러드+올리브오일 (100kcal)','계란 2개 (180kcal)'] },
+  { name: '야식', time: '21:00~22:00', kcal: 310, color: '#42A5F5', emoji: '🥣',
+    items: ['그릭요거트 200g (130kcal)','꿀/잼 1스푼 (60kcal)','시리얼/그래놀라 30g (120kcal)'] },
+];
+
+const WORKOUTS = {
+  0: { type: 'PUSH A', name: '가슴/어깨/삼두', exercises: [{name:'벤치프레스',detail:'4x8-10'},{name:'인클라인 덤벨프레스',detail:'3x10-12'},{name:'오버헤드프레스',detail:'4x8-10'},{name:'사이드 레터럴 레이즈',detail:'3x12-15'},{name:'케이블 플라이',detail:'3x12-15'},{name:'트라이셉스 푸쉬다운',detail:'3x10-12'}]},
+  1: { type: 'PULL', name: '등/이두', exercises: [{name:'데드리프트',detail:'4x5-8'},{name:'바벨 로우',detail:'4x8-10'},{name:'랫풀다운',detail:'3x10-12'},{name:'시티드 케이블 로우',detail:'3x10-12'},{name:'페이스풀',detail:'3x15-20'},{name:'바벨 컬',detail:'3x10-12'}]},
+  2: { type: 'LEGS', name: '하체', exercises: [{name:'바벨 스쿼트',detail:'4x6-10'},{name:'레그프레스',detail:'3x10-12'},{name:'루마니안 데드리프트',detail:'3x10-12'},{name:'레그 익스텐션',detail:'3x12-15'},{name:'레그 컬',detail:'3x12-15'},{name:'카프 레이즈',detail:'4x15-20'}]},
+  3: { type: '휴식', name: '가벼운 유산소/스트레칭', exercises: [{name:'가벼운 걷기/조깅',detail:'30분'},{name:'스트레칭/폼롤러',detail:'15분'},{name:'코어 운동 (플랭크)',detail:'3x30-60초'}]},
+  4: { type: 'PUSH B', name: '가슴/어깨/삼두', exercises: [{name:'덤벨 벤치프레스',detail:'4x8-12'},{name:'딥스 (가중)',detail:'3x8-12'},{name:'덤벨 숄더프레스',detail:'4x8-10'},{name:'리어 델트 플라이',detail:'3x12-15'},{name:'인클라인 케이블 플라이',detail:'3x12-15'},{name:'오버헤드 트라이셉스',detail:'3x10-12'}]},
+  5: { type: 'PULL+LEGS B', name: '등/하체 혼합', exercises: [{name:'풀업/친업',detail:'4x최대'},{name:'원암 덤벨 로우',detail:'3x10-12'},{name:'불가리안 스플릿 스쿼트',detail:'3x10-12'},{name:'힙 쓰러스트',detail:'3x10-12'},{name:'해머 컬',detail:'3x10-12'},{name:'행잉 레그레이즈',detail:'3x12-15'}]},
+  6: { type: '완전 휴식', name: '근회복 및 성장', exercises: [{name:'완전 휴식',detail:'-'},{name:'충분한 수면 7-9시간',detail:'-'},{name:'체중 측정 & 기록',detail:'-'}]},
+};
+
+const WEEKDAYS_LABEL = ['월','화','수','목','금','토','일'];
+let currentDate = new Date();
+let calView = 'week'; // 'week' or 'month'
+let calOffset = 0; // week or month offset from current
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem('bulk_'+key)) || {}; } catch { return {}; }
+}
+function setData(key, data) {
+  localStorage.setItem('bulk_'+key, JSON.stringify(data));
+}
+function getWeekday(d) {
+  const day = d.getDay();
+  return day === 0 ? 6 : day - 1;
+}
+function sameDay(a, b) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+function getDayScore(d) {
+  const data = getData(dateKey(d));
+  const meals = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+  const workout = data.workoutDone ? 1 : 0;
+  return { meals, workout, total: meals + workout, max: 6, weight: data.weight || null, water: parseFloat(data.water||0) };
+}
+function scoreLevel(score) {
+  if (score.total === 0) return 0;
+  if (score.total <= 2) return 1;
+  if (score.total <= 4) return 2;
+  if (score.total <= 5) return 3;
+  return 4;
+}
+function scoreFillColor(score) {
+  const pct = score.total / score.max;
+  if (pct === 0) return 'var(--text3)';
+  if (pct < 0.4) return '#e53935';
+  if (pct < 0.7) return 'var(--accent2)';
+  return 'var(--accent)';
+}
+
+function changeDate(delta) {
+  currentDate.setDate(currentDate.getDate() + delta);
+  calOffset = 0;
+  render();
+}
+function goToday() {
+  currentDate = new Date();
+  calOffset = 0;
+  render();
+}
+
+// ======== CALENDAR LOGIC ========
+function switchCalView(view) {
+  calView = view;
+  calOffset = 0;
+  document.getElementById('tabWeek').classList.toggle('active', view==='week');
+  document.getElementById('tabMonth').classList.toggle('active', view==='month');
+  document.getElementById('calWeekView').style.display = view==='week' ? '' : 'none';
+  document.getElementById('calMonthView').style.display = view==='month' ? '' : 'none';
+  renderCalendar();
+}
+function navCal(dir) {
+  calOffset += dir;
+  renderCalendar();
+}
+
+function getWeekStart(d, offset) {
+  const dt = new Date(d);
+  const wd = getWeekday(dt);
+  dt.setDate(dt.getDate() - wd + (offset * 7));
+  return dt;
+}
+
+function renderCalendar() {
+  if (calView === 'week') renderWeekView();
+  else renderMonthView();
+}
+
+function renderWeekView() {
+  const today = new Date();
+  const weekStart = getWeekStart(currentDate, calOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  // Nav title
+  const m1 = weekStart.getMonth()+1, d1 = weekStart.getDate();
+  const m2 = weekEnd.getMonth()+1, d2 = weekEnd.getDate();
+  document.getElementById('calNavTitle').textContent =
+    m1 === m2 ? `${m1}월 ${d1}일 ~ ${d2}일` : `${m1}/${d1} ~ ${m2}/${d2}`;
+
+  // Day labels
+  const labelsEl = document.getElementById('weekDayLabels');
+  labelsEl.innerHTML = WEEKDAYS_LABEL.map((w,i) =>
+    `<div class="week-day-label${i===6?' sun':''}">${w}</div>`
+  ).join('');
+
+  // Cells
+  const cellsEl = document.getElementById('weekCells');
+  let cells = '';
+  let weekScores = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const isToday = sameDay(d, today);
+    const isSelected = sameDay(d, currentDate);
+    const score = getDayScore(d);
+    weekScores.push(score);
+    const isSun = i === 6;
+    const pct = Math.round((score.total / score.max) * 100);
+    const fillColor = scoreFillColor(score);
+
+    cells += `<div class="week-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectDay(${d.getFullYear()},${d.getMonth()},${d.getDate()})">
+      <div class="day-num${isSun?' sun':''}">${d.getDate()}</div>
+      <div class="dots">
+        ${score.meals > 0 ? '<div class="dot meal"></div>' : '<div class="dot empty"></div>'}
+        ${score.workout ? '<div class="dot workout"></div>' : '<div class="dot empty"></div>'}
+      </div>
+      <div class="score-bar"><div class="score-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+    </div>`;
+  }
+  cellsEl.innerHTML = cells;
+
+  // Week stats
+  const totalMeals = weekScores.reduce((s,v) => s + v.meals, 0);
+  const totalWorkouts = weekScores.reduce((s,v) => s + v.workout, 0);
+  const weights = weekScores.map(s=>s.weight).filter(Boolean);
+  const avgWeight = weights.length ? (weights.reduce((a,b)=>a+b,0)/weights.length).toFixed(1) : '-';
+  const totalWater = weekScores.reduce((s,v) => s + v.water, 0).toFixed(1);
+  const perfectDays = weekScores.filter(s => s.total >= 5).length;
+
+  document.getElementById('weekDetail').innerHTML = `
+    <div class="week-stats">
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent)">${totalMeals}/35</div><div class="ws-lbl">식사</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent2)">${totalWorkouts}/6</div><div class="ws-lbl">운동</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent3)">${avgWeight}</div><div class="ws-lbl">평균 체중</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:#AB47BC">${perfectDays}</div><div class="ws-lbl">완벽한 날</div></div>
+    </div>
+  `;
+}
+
+function renderMonthView() {
+  const today = new Date();
+  const refDate = new Date(currentDate);
+  refDate.setMonth(refDate.getMonth() + calOffset);
+  const year = refDate.getFullYear();
+  const month = refDate.getMonth();
+
+  document.getElementById('calNavTitle').textContent = `${year}년 ${month+1}월`;
+
+  // Day labels
+  const labelsEl = document.getElementById('monthDayLabels');
+  labelsEl.innerHTML = WEEKDAYS_LABEL.map((w,i) =>
+    `<div class="week-day-label${i===6?' sun':''}">${w}</div>`
+  ).join('');
+
+  // First day of month
+  const firstDay = new Date(year, month, 1);
+  const firstWd = getWeekday(firstDay);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  // Cells: fill before, month days, fill after
+  const cellsEl = document.getElementById('monthCells');
+  let cells = '';
+  let allScores = [];
+  let weightData = [];
+
+  // Days before
+  for (let i = 0; i < firstWd; i++) {
+    const d = new Date(year, month, 1 - (firstWd - i));
+    cells += `<div class="month-cell"><div class="ring"><div class="ring-bg lv0"></div><div class="day-num other-month">${d.getDate()}</div></div></div>`;
+  }
+
+  // Month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day);
+    const isToday = sameDay(d, today);
+    const isSelected = sameDay(d, currentDate);
+    const score = getDayScore(d);
+    allScores.push(score);
+    if (score.weight) weightData.push({ day, weight: score.weight });
+    const lv = scoreLevel(score);
+    const isSun = getWeekday(d) === 6;
+
+    cells += `<div class="month-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectDay(${year},${month},${day})">
+      <div class="ring"><div class="ring-bg lv${lv}"></div><div class="day-num${isSun?' sun':''}" style="position:relative;z-index:1">${day}</div></div>
+    </div>`;
+  }
+
+  // Days after
+  const totalCells = firstWd + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    cells += `<div class="month-cell"><div class="ring"><div class="ring-bg lv0"></div><div class="day-num other-month">${i}</div></div></div>`;
+  }
+  cellsEl.innerHTML = cells;
+
+  // Legend
+  document.getElementById('monthLegend').innerHTML = `
+    <div class="legend-item"><div class="legend-swatch" style="background:transparent;border:1px solid var(--text3)"></div>기록 없음</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.12)"></div>1~2</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.25)"></div>3~4</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.45)"></div>5</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div>완벽 (6/6)</div>
+  `;
+
+  // Weight chart
+  const chartWrap = document.getElementById('weightChartWrap');
+  if (weightData.length >= 2) {
+    chartWrap.style.display = '';
+    document.getElementById('weightChartTitle').textContent = `${month+1}월 체중 변화`;
+    renderWeightChart(weightData, daysInMonth);
+  } else {
+    chartWrap.style.display = 'none';
+  }
+
+  // Month stats
+  const totalDays = allScores.length;
+  const activeDays = allScores.filter(s => s.total > 0).length;
+  const totalMeals = allScores.reduce((s,v) => s + v.meals, 0);
+  const totalWorkouts = allScores.reduce((s,v) => s + v.workout, 0);
+  const perfectDays = allScores.filter(s => s.total >= 5).length;
+  const weights = allScores.map(s=>s.weight).filter(Boolean);
+  const firstW = weights.length ? weights[0] : null;
+  const lastW = weights.length ? weights[weights.length-1] : null;
+  const weightChange = firstW && lastW ? (lastW - firstW).toFixed(1) : '-';
+  const mealRate = activeDays > 0 ? Math.round((totalMeals / (activeDays * 5)) * 100) : 0;
+  const workoutRate = activeDays > 0 ? Math.round((totalWorkouts / (activeDays * (6/7))) * 100) : 0;
+
+  document.getElementById('monthDetail').innerHTML = `
+    <div class="month-stats">
+      <div class="month-stat-card">
+        <div class="ms-lbl">식사 달성률</div>
+        <div class="ms-val" style="color:var(--accent)">${mealRate}%</div>
+        <div class="ms-sub">${totalMeals}끼 / ${activeDays * 5}끼</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">운동 달성률</div>
+        <div class="ms-val" style="color:var(--accent2)">${totalWorkouts}회</div>
+        <div class="ms-sub">목표 ${Math.round(daysInMonth * 6/7)}회</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">체중 변화</div>
+        <div class="ms-val" style="color:${weightChange !== '-' && parseFloat(weightChange) >= 0 ? 'var(--accent)' : 'var(--danger)'}">${weightChange !== '-' ? (parseFloat(weightChange) >= 0 ? '+' : '') + weightChange + 'kg' : '-'}</div>
+        <div class="ms-sub">${firstW ? firstW+'kg' : '-'} → ${lastW ? lastW+'kg' : '-'}</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">완벽한 날</div>
+        <div class="ms-val" style="color:#AB47BC">${perfectDays}일</div>
+        <div class="ms-sub">기록한 날 ${activeDays}일 중</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWeightChart(data, daysInMonth) {
+  const svg = document.getElementById('weightChartSvg');
+  const w = svg.clientWidth || 300;
+  const h = 60;
+  const pad = { t: 8, b: 14, l: 30, r: 8 };
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+
+  const minW = Math.min(...data.map(d=>d.weight)) - 0.5;
+  const maxW = Math.max(...data.map(d=>d.weight)) + 0.5;
+  const rangeW = maxW - minW || 1;
+
+  const pts = data.map(d => ({
+    x: pad.l + (d.day - 1) / (daysInMonth - 1) * plotW,
+    y: pad.t + plotH - ((d.weight - minW) / rangeW) * plotH
+  }));
+
+  let path = pts.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  let area = path + ` L${pts[pts.length-1].x.toFixed(1)},${pad.t+plotH} L${pts[0].x.toFixed(1)},${pad.t+plotH} Z`;
+
+  let dots = pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#4CAF50"/>`).join('');
+  let labels = `<text x="${pad.l-4}" y="${pad.t+4}" fill="#9aa0a6" font-size="8" text-anchor="end">${maxW.toFixed(1)}</text>
+    <text x="${pad.l-4}" y="${pad.t+plotH+2}" fill="#9aa0a6" font-size="8" text-anchor="end">${minW.toFixed(1)}</text>`;
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = `
+    <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4CAF50" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#4CAF50" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <line x1="${pad.l}" y1="${pad.t+plotH}" x2="${pad.l+plotW}" y2="${pad.t+plotH}" stroke="#2d3e50" stroke-width="0.5"/>
+    <path d="${area}" fill="url(#areaGrad)"/>
+    <path d="${path}" fill="none" stroke="#4CAF50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    ${labels}
+  `;
+}
+
+function selectDay(y, m, d) {
+  currentDate = new Date(y, m, d);
+  calOffset = 0;
+  render();
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== ORIGINAL FUNCTIONS ========
+function render() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const wd = getWeekday(currentDate);
+
+  document.getElementById('currentDate').textContent = `${currentDate.getMonth()+1}월 ${currentDate.getDate()}일`;
+  document.getElementById('weekday').textContent = WEEKDAYS_LABEL[wd] + '요일';
+
+  // Meals
+  const mealContainer = document.getElementById('mealCards');
+  mealContainer.innerHTML = '';
+  MEALS.forEach((meal, i) => {
+    const checked = data.meals && data.meals[i];
+    const expanded = data.expanded && data.expanded[i];
+    const card = document.createElement('div');
+    card.className = `meal-card${checked ? ' checked' : ''}${expanded ? ' expanded' : ''}`;
+    card.innerHTML = `
+      <div class="meal-top">
+        <div class="meal-info" onclick="toggleExpand(${i})">
+          <div class="meal-icon" style="background:${meal.color}22;color:${meal.color}">${meal.emoji}</div>
+          <div>
+            <div class="meal-name">${meal.name}</div>
+            <div class="meal-time">${meal.time} · ${meal.kcal}kcal</div>
+          </div>
+        </div>
+        <div class="check-btn${checked ? ' active' : ''}" onclick="toggleMeal(${i})"></div>
+      </div>
+      <div class="meal-details">
+        ${meal.items.map(it => `<div class="meal-item"><span>${it.split('(')[0].trim()}</span><span>${it.match(/\((.+)\)/)?.[1]||''}</span></div>`).join('')}
+      </div>
+    `;
+    mealContainer.appendChild(card);
+  });
+
+  // Workout
+  const workout = WORKOUTS[wd];
+  const wContainer = document.getElementById('workoutCard');
+  const wChecked = data.workoutDone;
+  const exChecks = data.exercises || {};
+  wContainer.innerHTML = `
+    <div class="workout-card${wChecked ? ' checked' : ''}">
+      <div class="workout-header">
+        <div><div class="workout-type">${workout.type}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${workout.name}</div></div>
+        <div class="check-btn${wChecked ? ' active' : ''}" onclick="toggleWorkout()"></div>
+      </div>
+      <div class="workout-exercises">
+        ${workout.exercises.map((ex, i) => `
+          <div class="exercise-row">
+            <div class="ex-check${exChecks[i] ? ' active' : ''}" onclick="toggleExercise(${i})"></div>
+            <span class="ex-name">${ex.name}</span>
+            <span class="ex-detail">${ex.detail}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('weightInput').value = data.weight || '';
+  document.getElementById('waterInput').value = data.water || '0.0';
+  document.getElementById('memoInput').value = data.memo || '';
+
+  updateSummary();
+  updateStreak();
+  renderCalendar();
+}
+
+function toggleMeal(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.meals) data.meals = {};
+  data.meals[i] = !data.meals[i];
+  setData(key, data);
+  render();
+}
+function toggleExpand(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.expanded) data.expanded = {};
+  data.expanded[i] = !data.expanded[i];
+  setData(key, data);
+  render();
+}
+function toggleWorkout() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  data.workoutDone = !data.workoutDone;
+  setData(key, data);
+  render();
+}
+function toggleExercise(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.exercises) data.exercises = {};
+  data.exercises[i] = !data.exercises[i];
+  setData(key, data);
+  render();
+}
+function adjustWater(delta) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  let w = parseFloat(data.water || 0) + delta;
+  if (w < 0) w = 0;
+  data.water = w.toFixed(1);
+  setData(key, data);
+  render();
+}
+function saveData() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const wv = document.getElementById('weightInput').value;
+  if (wv) data.weight = parseFloat(wv);
+  else delete data.weight;
+  data.memo = document.getElementById('memoInput').value;
+  setData(key, data);
+  updateSummary();
+  renderCalendar();
+}
+function updateSummary() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const mealCount = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+  const totalTasks = 5 + (getWeekday(currentDate) !== 6 ? 1 : 0);
+  const doneTasks = mealCount + (data.workoutDone ? 1 : 0);
+  document.getElementById('sumMeals').textContent = `${mealCount}/5`;
+  document.getElementById('sumWorkout').textContent = data.workoutDone ? 'O' : '-';
+  document.getElementById('sumWater').textContent = `${data.water || 0}L`;
+  document.getElementById('sumWeight').textContent = data.weight ? `${data.weight}kg` : '-';
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  document.getElementById('dayProgress').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${doneTasks} / ${totalTasks} 완료 (${pct}%)`;
+}
+function updateStreak() {
+  let streak = 0;
+  const d = new Date(currentDate);
+  d.setDate(d.getDate() - 1);
+  while (true) {
+    const k = dateKey(d);
+    const data = getData(k);
+    const mealCount = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+    if (mealCount >= 3) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+    if (streak > 365) break;
+  }
+  const todayData = getData(dateKey(currentDate));
+  const todayMeals = todayData.meals ? Object.values(todayData.meals).filter(Boolean).length : 0;
+  if (todayMeals >= 3) streak++;
+  document.getElementById('streakBadge').textContent = `${streak}일 연속`;
+}
+
+render();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
