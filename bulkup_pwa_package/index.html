@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>벌크업 트래커</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0f1923; --card: #1a2733; --card2: #223344;
+  --accent: #4CAF50; --accent2: #FF9800; --accent3: #2196F3;
+  --text: #e8eaed; --text2: #9aa0a6; --text3: #5f6368;
+  --border: #2d3e50; --danger: #e53935;
+}
+body { font-family: -apple-system, 'Pretendard', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 130px; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #1a3a2a, #0f2520); padding: 20px 16px 16px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header .sub { font-size: 12px; color: var(--accent); margin-top: 4px; }
+.date-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.date-nav button { background: var(--card2); border: 1px solid var(--border); color: var(--text); width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.date-nav .current-date { font-size: 15px; font-weight: 600; }
+.date-nav .weekday { font-size: 12px; color: var(--accent2); margin-left: 6px; }
+.progress-wrap { margin-top: 12px; }
+.progress-bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #81C784); border-radius: 3px; transition: width 0.4s ease; }
+.progress-text { font-size: 11px; color: var(--text2); margin-top: 4px; text-align: right; }
+
+/* Section */
+.section { padding: 12px 16px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+/* Meal cards */
+.meal-card { background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border); transition: all 0.2s; }
+.meal-card.checked { border-color: var(--accent); background: linear-gradient(135deg, rgba(76,175,80,0.08), var(--card)); }
+.meal-top { display: flex; align-items: center; justify-content: space-between; }
+.meal-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+.meal-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.meal-name { font-size: 14px; font-weight: 600; }
+.meal-time { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.check-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--text3); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.check-btn.active { background: var(--accent); border-color: var(--accent); }
+.check-btn.active::after { content: ''; display: block; width: 8px; height: 14px; border: solid white; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) translateY(-1px); }
+.meal-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: none; }
+.meal-card.expanded .meal-details { display: block; }
+.meal-item { font-size: 12px; color: var(--text2); padding: 4px 0; display: flex; justify-content: space-between; }
+.meal-item span:last-child { color: var(--text3); }
+
+/* Workout card */
+.workout-card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); margin-bottom: 10px; }
+.workout-card.checked { border-color: var(--accent2); background: linear-gradient(135deg, rgba(255,152,0,0.08), var(--card)); }
+.workout-header { display: flex; align-items: center; justify-content: space-between; }
+.workout-type { font-size: 15px; font-weight: 700; color: var(--accent2); }
+.workout-exercises { margin-top: 10px; }
+.exercise-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(45,62,80,0.5); }
+.exercise-row:last-child { border: none; }
+.ex-check { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--text3); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+.ex-check.active { background: var(--accent2); border-color: var(--accent2); }
+.ex-check.active::after { content: ''; display: block; width: 6px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-1px); }
+.ex-name { font-size: 13px; flex: 1; }
+.ex-detail { font-size: 11px; color: var(--text2); }
+
+/* Weight & Water */
+.input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.input-card { flex: 1; background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid var(--border); text-align: center; }
+.input-card label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 8px; }
+.input-card input { width: 100%; background: var(--card2); border: 1px solid var(--border); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; padding: 8px; border-radius: 10px; outline: none; }
+.input-card input:focus { border-color: var(--accent); }
+.input-card .unit { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.water-btns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.water-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--card2); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.water-btn:active { background: var(--accent3); }
+.memo-card { background: var(--card); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); margin-bottom: 10px; }
+.memo-card textarea { width: 100%; background: transparent; border: none; color: var(--text); font-size: 13px; resize: none; outline: none; min-height: 50px; font-family: inherit; }
+
+/* Summary bar */
+.summary-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; justify-content: space-around; z-index: 100; }
+.summary-item { text-align: center; }
+.summary-item .val { font-size: 15px; font-weight: 700; }
+.summary-item .lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.summary-item .val.green { color: var(--accent); }
+.summary-item .val.orange { color: var(--accent2); }
+.summary-item .val.blue { color: var(--accent3); }
+.streak-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,152,0,0.15); color: var(--accent2); padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 8px; }
+
+/* ======== CALENDAR STYLES ======== */
+.cal-section { padding: 0 16px 12px; }
+.cal-container { background: var(--card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+
+/* Tab toggle */
+.cal-tabs { display: flex; background: var(--card2); }
+.cal-tab { flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
+.cal-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(76,175,80,0.06); }
+
+/* Calendar nav */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; }
+.cal-nav-btn { background: none; border: 1px solid var(--border); color: var(--text); width: 30px; height: 30px; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cal-nav-btn:active { background: var(--card2); }
+.cal-nav-title { font-size: 14px; font-weight: 700; }
+.cal-nav .today-btn { font-size: 11px; color: var(--accent); background: rgba(76,175,80,0.12); border: none; padding: 4px 10px; border-radius: 12px; cursor: pointer; margin-left: 8px; font-weight: 600; }
+
+/* Weekly view */
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 8px 10px 6px; }
+.week-day-label { text-align: center; font-size: 10px; color: var(--text3); font-weight: 600; padding-bottom: 4px; }
+.week-day-label.sun { color: var(--danger); }
+.week-cell { text-align: center; padding: 6px 2px; border-radius: 10px; cursor: pointer; transition: all 0.15s; position: relative; }
+.week-cell:active { transform: scale(0.95); }
+.week-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.week-cell.selected { background: rgba(76,175,80,0.18); }
+.week-cell .day-num { font-size: 13px; font-weight: 600; line-height: 1; }
+.week-cell .day-num.sun { color: var(--danger); }
+.week-cell .day-num.other-month { color: var(--text3); opacity: 0.4; }
+
+/* Dots under day number */
+.week-cell .dots { display: flex; gap: 3px; justify-content: center; margin-top: 5px; height: 6px; }
+.week-cell .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot.meal { background: var(--accent); }
+.dot.workout { background: var(--accent2); }
+.dot.empty { background: var(--text3); opacity: 0.3; }
+
+/* Score bar under day */
+.week-cell .score-bar { height: 3px; border-radius: 2px; margin: 5px 3px 0; background: var(--card2); overflow: hidden; }
+.week-cell .score-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+/* Week detail strip */
+.week-detail { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.week-stats { display: flex; justify-content: space-around; }
+.week-stat { text-align: center; }
+.week-stat .ws-val { font-size: 20px; font-weight: 800; }
+.week-stat .ws-lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Monthly view */
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 8px 10px 12px; }
+.month-cell { text-align: center; padding: 4px 0; border-radius: 8px; cursor: pointer; transition: all 0.15s; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.month-cell:active { transform: scale(0.93); }
+.month-cell.today { outline: 2px solid var(--accent); outline-offset: -2px; }
+.month-cell.selected { background: rgba(76,175,80,0.18); }
+.month-cell .day-num { font-size: 12px; font-weight: 600; line-height: 1; }
+.month-cell .day-num.sun { color: var(--danger); }
+.month-cell .day-num.other-month { color: var(--text3); opacity: 0.3; }
+.month-cell .ring { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
+
+/* Achievement ring */
+.ring-bg { position: absolute; inset: 0; border-radius: 50%; }
+.ring-bg.lv0 { background: transparent; }
+.ring-bg.lv1 { background: rgba(76,175,80,0.12); }
+.ring-bg.lv2 { background: rgba(76,175,80,0.25); }
+.ring-bg.lv3 { background: rgba(76,175,80,0.45); }
+.ring-bg.lv4 { background: var(--accent); }
+.ring-bg.lv4 + .day-num { color: #fff !important; }
+
+/* Month detail strip */
+.month-detail { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.month-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.month-stat-card { background: var(--card2); border-radius: 10px; padding: 10px 12px; }
+.month-stat-card .ms-lbl { font-size: 10px; color: var(--text2); margin-bottom: 4px; }
+.month-stat-card .ms-val { font-size: 16px; font-weight: 700; }
+.month-stat-card .ms-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Legend */
+.cal-legend { display: flex; gap: 12px; justify-content: center; padding: 8px 14px 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+/* Weight mini chart */
+.weight-chart { padding: 8px 14px 12px; }
+.weight-chart-title { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+.chart-svg { width: 100%; height: 60px; }
+
+/* Bottom nav */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--card); border-top: 1px solid var(--border); z-index: 200; }
+.nav-tab { flex: 1; text-align: center; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.nav-tab .nav-icon { font-size: 18px; }
+.nav-tab.active { color: var(--accent); }
+.summary-bar { bottom: calc(46px + env(safe-area-inset-bottom)); }
+
+/* Guide page */
+.page { display: none; }
+.page.active { display: block; }
+.guide-page { padding: 0 16px 120px; }
+.guide-header { padding: 20px 0 8px; }
+.guide-header h2 { font-size: 18px; font-weight: 700; }
+.guide-header .guide-sub { font-size: 12px; color: var(--accent); margin-top: 4px; }
+.guide-section { margin-bottom: 16px; }
+.guide-section-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.guide-card { background: var(--card); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); margin-bottom: 10px; }
+.guide-card-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+.guide-item { font-size: 12px; color: var(--text2); padding: 5px 0; border-bottom: 1px solid rgba(45,62,80,0.3); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.guide-item:last-child { border: none; }
+.guide-item .gi-name { flex: 1; }
+.guide-item .gi-val { color: var(--text3); font-size: 11px; white-space: nowrap; }
+.guide-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; margin-right: 4px; margin-bottom: 4px; }
+.guide-tag.cold { background: rgba(33,150,243,0.15); color: var(--accent3); }
+.guide-tag.room { background: rgba(255,152,0,0.15); color: var(--accent2); }
+.guide-tag.frozen { background: rgba(156,39,176,0.15); color: #AB47BC; }
+.tip-box { background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.tip-box .tip-title { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.tip-box .tip-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.principle-list { list-style: none; counter-reset: principle; }
+.principle-list li { font-size: 12px; color: var(--text2); padding: 8px 0; border-bottom: 1px solid rgba(45,62,80,0.3); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+.principle-list li:last-child { border: none; }
+.principle-list li::before { counter-increment: principle; content: counter(principle); background: var(--accent); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+/* Weight dual input */
+.weight-dual { display: flex; gap: 10px; }
+.weight-dual .input-card { flex: 1; }
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0f1923">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="벌크업 트래커">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+
+</head>
+<body>
+
+<div id="trackerPage" class="page active">
+<div class="header">
+  <div style="display:flex;align-items:center;">
+    <h1>벌크업 트래커</h1>
+    <span class="streak-badge" id="streakBadge">0일 연속</span>
+  </div>
+  <div class="sub">55kg → 65kg | 목표 +2kg/월 | 하루 3,000kcal</div>
+  <div class="date-nav">
+    <button onclick="changeDate(-1)">&#8249;</button>
+    <div>
+      <span class="current-date" id="currentDate"></span>
+      <span class="weekday" id="weekday"></span>
+    </div>
+    <button onclick="changeDate(1)">&#8250;</button>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="dayProgress"></div></div>
+    <div class="progress-text" id="progressText">0 / 0 완료</div>
+  </div>
+</div>
+
+<!-- ======== CALENDAR VIEW ======== -->
+<div class="cal-section">
+  <div class="cal-container">
+    <div class="cal-tabs">
+      <div class="cal-tab active" id="tabWeek" onclick="switchCalView('week')">1주</div>
+      <div class="cal-tab" id="tabMonth" onclick="switchCalView('month')">1달</div>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="navCal(-1)">&#8249;</button>
+      <div style="display:flex;align-items:center;">
+        <span class="cal-nav-title" id="calNavTitle"></span>
+        <button class="today-btn" onclick="goToday()">오늘</button>
+      </div>
+      <button class="cal-nav-btn" onclick="navCal(1)">&#8250;</button>
+    </div>
+    <div id="calWeekView">
+      <div class="week-grid" id="weekDayLabels"></div>
+      <div class="week-grid" id="weekCells"></div>
+      <div class="week-detail" id="weekDetail"></div>
+    </div>
+    <div id="calMonthView" style="display:none;">
+      <div class="month-grid" id="monthDayLabels"></div>
+      <div class="month-grid" id="monthCells"></div>
+      <div class="cal-legend" id="monthLegend"></div>
+      <div class="weight-chart" id="weightChartWrap" style="display:none;">
+        <div class="weight-chart-title" id="weightChartTitle"></div>
+        <svg class="chart-svg" id="weightChartSvg"></svg>
+      </div>
+      <div class="month-detail" id="monthDetail"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">식단 체크</div>
+  <div id="mealCards"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">오늘의 운동</div>
+  <div id="workoutCard"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">기록</div>
+  <div class="weight-dual">
+    <div class="input-card">
+      <label>아침 체중</label>
+      <input type="number" step="0.1" id="weightAMInput" placeholder="0.0" oninput="saveData()">
+      <div class="unit">kg</div>
+    </div>
+    <div class="input-card">
+      <label>저녁 체중</label>
+      <input type="number" step="0.1" id="weightPMInput" placeholder="0.0" oninput="saveData()">
+      <div class="unit">kg</div>
+    </div>
+  </div>
+  <div class="input-row" style="margin-top:10px">
+    <div class="input-card">
+      <label>수분 섭취</label>
+      <input type="number" step="0.1" id="waterInput" placeholder="0.0" readonly>
+      <div class="unit">L</div>
+      <div class="water-btns">
+        <button class="water-btn" onclick="adjustWater(-0.3)">-</button>
+        <button class="water-btn" onclick="adjustWater(0.3)">+</button>
+      </div>
+    </div>
+  </div>
+  <div class="memo-card">
+    <textarea id="memoInput" placeholder="오늘의 메모 (컨디션, 특이사항 등)" oninput="saveData()"></textarea>
+  </div>
+</div>
+
+<div class="summary-bar" id="summaryBar">
+  <div class="summary-item"><div class="val green" id="sumMeals">0/5</div><div class="lbl">식사</div></div>
+  <div class="summary-item"><div class="val orange" id="sumWorkout">-</div><div class="lbl">운동</div></div>
+  <div class="summary-item"><div class="val blue" id="sumWater">0L</div><div class="lbl">수분</div></div>
+  <div class="summary-item"><div class="val" id="sumWeightAM" style="color:var(--text)">-</div><div class="lbl">아침체중</div></div>
+  <div class="summary-item"><div class="val" id="sumWeightPM" style="color:var(--text)">-</div><div class="lbl">저녁체중</div></div>
+</div>
+</div><!-- /trackerPage -->
+
+<!-- ======== GUIDE PAGE ======== -->
+<div id="guidePage" class="page">
+<div class="header" style="background:linear-gradient(135deg,#1a2a3a,#0f2025)">
+  <h1>벌크업 가이드</h1>
+  <div class="sub">5개월 10kg | 55kg → 65kg | 하루 3,000kcal</div>
+</div>
+<div class="guide-page">
+
+  <!-- 핵심 원칙 -->
+  <div class="guide-section">
+    <div class="guide-section-title">핵심 원칙</div>
+    <div class="guide-card">
+      <ol class="principle-list">
+        <li>시계가 아니라 "기상 후 시간"으로 식사 타이밍 잡기</li>
+        <li>하루 4끼 + 간식, 칼로리 분산해서 먹기</li>
+        <li>고밀도 음식(PB, 견과류, 올리브오일)으로 적게 먹어도 칼로리 UP</li>
+        <li>매주 같은 재료를 사서, 같은 메뉴를 반복 (루틴이 핵심)</li>
+        <li>배달 음식은 고정 메뉴 2~3개만 돌려서 고민 최소화</li>
+        <li>단백질 90~110g: 계란 + 치킨 + 그릭요거트 + 우유 조합</li>
+        <li>깔끔한 벌크업 → 월 1~1.5kg, 하루 2,600~2,800kcal로 조절</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 목표 영양소 -->
+  <div class="guide-section">
+    <div class="guide-section-title">목표 칼로리 & 영양소</div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">유지 칼로리</span><span class="gi-val">2,300~2,500 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">목표 섭취량</span><span class="gi-val">2,800~3,000 kcal (+500)</span></div>
+      <div class="guide-item"><span class="gi-name">단백질</span><span class="gi-val">90~110g/일</span></div>
+      <div class="guide-item"><span class="gi-name">월간 체중 증가</span><span class="gi-val">약 2kg (깔끔하게 1~1.5kg)</span></div>
+    </div>
+  </div>
+
+  <!-- 식사 타이밍 -->
+  <div class="guide-section">
+    <div class="guide-section-title">식사 타이밍 전략</div>
+    <div class="tip-box">
+      <div class="tip-title">기상 후 시간 기준!</div>
+      <div class="tip-text">수면 시간이 불규칙해도, 기상 후 시간으로 식사를 잡으면 루틴을 유지할 수 있습니다.</div>
+    </div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">1식 · 기상 후 30분</span><span class="gi-val">550~600 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">간식 · 기상 후 2~3시간</span><span class="gi-val">400~450 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">2식 · 기상 후 3~4시간</span><span class="gi-val">700 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">3식 · 기상 후 6~7시간</span><span class="gi-val">800 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">4식 · 자기 전 1~2시간</span><span class="gi-val">400~500 kcal</span></div>
+    </div>
+  </div>
+
+  <!-- 월수 수업일 -->
+  <div class="guide-section">
+    <div class="guide-section-title">월수 수업일 (11:00~16:30)</div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">수업 전</span><span class="gi-val">1식 든든하게</span></div>
+      <div class="guide-item"><span class="gi-name">1:30~2:00 쉬는 시간</span><span class="gi-val">PB샌드위치 / 견과류+그릭요거트</span></div>
+      <div class="guide-item"><span class="gi-name">수업 후</span><span class="gi-val">3식 메인 식사</span></div>
+      <div class="guide-item"><span class="gi-name">자기 전</span><span class="gi-val">4식 쉐이크 / 시리얼+우유</span></div>
+    </div>
+  </div>
+
+  <!-- 고밀도 칼로리 부스터 -->
+  <div class="guide-section">
+    <div class="guide-section-title">고밀도 칼로리 부스터</div>
+    <div class="tip-box">
+      <div class="tip-title">많이 먹기 힘들 때!</div>
+      <div class="tip-text">적은 양으로 칼로리를 올리는 방법들입니다.</div>
+    </div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">땅콩버터 1스푼</span><span class="gi-val">~100 kcal · 밥/쉐이크에 추가</span></div>
+      <div class="guide-item"><span class="gi-name">바나나+우유+오트밀 쉐이크</span><span class="gi-val">400~500 kcal · 간식/자기 전</span></div>
+      <div class="guide-item"><span class="gi-name">견과류 한 줌</span><span class="gi-val">~200 kcal · 수업 중 간식</span></div>
+      <div class="guide-item"><span class="gi-name">올리브오일 밥에 뿌리기</span><span class="gi-val">~120 kcal/스푼 · 모든 식사에</span></div>
+      <div class="guide-item"><span class="gi-name">치즈 1장 추가</span><span class="gi-val">~110 kcal · 샌드위치/계란</span></div>
+      <div class="guide-item"><span class="gi-name">Whole Milk 큰 컵 (16oz)</span><span class="gi-val">~300 kcal · 음료 대용</span></div>
+    </div>
+  </div>
+
+  <!-- 장보기 리스트 -->
+  <div class="guide-section">
+    <div class="guide-section-title">주간 장보기 고정 리스트</div>
+    <div class="tip-box">
+      <div class="tip-title">매주 같은 리스트 재주문!</div>
+      <div class="tip-text">Walmart/Amazon Fresh/Instacart에 장바구니 저장해두고 매주 똑같이 주문하세요.</div>
+    </div>
+
+    <div class="guide-card">
+      <div class="guide-card-title"><span class="guide-tag cold">냉장</span> 냉장 보관</div>
+      <div class="guide-item"><span class="gi-name">계란</span><span class="gi-val">2~3판</span></div>
+      <div class="guide-item"><span class="gi-name">Whole Milk</span><span class="gi-val">반갤런 (풀팩)</span></div>
+      <div class="guide-item"><span class="gi-name">그릭요거트</span><span class="gi-val">Fage/Chobani 풀팩</span></div>
+      <div class="guide-item"><span class="gi-name">슬라이스 치즈</span><span class="gi-val">American/Cheddar</span></div>
+      <div class="guide-item"><span class="gi-name">버터</span><span class="gi-val">1통</span></div>
+    </div>
+
+    <div class="guide-card">
+      <div class="guide-card-title"><span class="guide-tag room">상온</span> 상온 보관</div>
+      <div class="guide-item"><span class="gi-name">즉석밥 (CJ 햇반)</span><span class="gi-val">H Mart / Weee!</span></div>
+      <div class="guide-item"><span class="gi-name">땅콩버터 큰 통</span><span class="gi-val">크런치/스무스</span></div>
+      <div class="guide-item"><span class="gi-name">오트밀</span><span class="gi-val">Quaker 큰 통</span></div>
+      <div class="guide-item"><span class="gi-name">꿀</span><span class="gi-val">1병</span></div>
+      <div class="guide-item"><span class="gi-name">식빵</span><span class="gi-val">통밀 또는 화이트</span></div>
+      <div class="guide-item"><span class="gi-name">견과류 믹스</span><span class="gi-val">Kirkland/Planters</span></div>
+      <div class="guide-item"><span class="gi-name">파스타 + 병소스</span><span class="gi-val">Rao's 추천</span></div>
+      <div class="guide-item"><span class="gi-name">올리브오일</span><span class="gi-val">1병</span></div>
+      <div class="guide-item"><span class="gi-name">간장 + 참기름</span><span class="gi-val">H Mart / Weee!</span></div>
+    </div>
+
+    <div class="guide-card">
+      <div class="guide-card-title"><span class="guide-tag frozen">냉동</span> 냉동실</div>
+      <div class="guide-item"><span class="gi-name">냉동 치킨</span><span class="gi-val">Tyson 브레스트/허벅지살</span></div>
+      <div class="guide-item"><span class="gi-name">냉동 야채</span><span class="gi-val">브로콜리/믹스</span></div>
+    </div>
+  </div>
+
+  <!-- 배달 추천 -->
+  <div class="guide-section">
+    <div class="guide-section-title">배달 음식 추천 (고칼로리)</div>
+    <div class="tip-box">
+      <div class="tip-title">주 2~3회 제한!</div>
+      <div class="tip-text">매번 고민 안 하도록 고정 메뉴 2~3개를 정해두세요. DoorDash 등은 돈이 빠지니 보상 걸로만 사용.</div>
+    </div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">Chipotle Bowl (밥+더블고기+치즈+사워크림)</span><span class="gi-val">800~1,000 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">Subway 풋롱 (치킨터이야키/미트볼)</span><span class="gi-val">~800 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">덮밥류 (규동/제육덮밥)</span><span class="gi-val">600~800 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">국밥류 (순대국/갈비탕)</span><span class="gi-val">500~700 kcal</span></div>
+      <div class="guide-item"><span class="gi-name">Five Guys 버거 + 감자</span><span class="gi-val">~1,200 kcal (가끔)</span></div>
+    </div>
+  </div>
+
+  <!-- 장보기 팁 -->
+  <div class="guide-section">
+    <div class="guide-section-title">장보기 & 배달 팁</div>
+    <div class="guide-card">
+      <div class="guide-item"><span class="gi-name">Walmart / Amazon Fresh</span><span class="gi-val">$35↑ 무료배달, 주 1회 몰아서</span></div>
+      <div class="guide-item"><span class="gi-name">H Mart / Weee! 앱</span><span class="gi-val">햇반, 간장, 참기름 등 한식재료</span></div>
+      <div class="guide-item"><span class="gi-name">DoorDash 등 배달앱</span><span class="gi-val">주 2~3회 보상 걸로만</span></div>
+      <div class="guide-item"><span class="gi-name">장바구니 저장 기능</span><span class="gi-val">매주 같은 리스트 재주문</span></div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /guidePage -->
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <div class="nav-tab active" id="navTracker" onclick="switchPage('tracker')">
+    <div class="nav-icon">📊</div>트래커
+  </div>
+  <div class="nav-tab" id="navGuide" onclick="switchPage('guide')">
+    <div class="nav-icon">📖</div>가이드
+  </div>
+</div>
+
+<script>
+const MEALS = [
+  { name: '1식 (아침)', time: '기상 후 30분', kcal: 580, protein: 21, color: '#FF7043', emoji: '🌅',
+    items: ['계란 3개 스크램블 + 토스트 2장 + 버터 (~550kcal, ~22g)','또는: 오트밀 + 우유 + PB + 바나나 + 꿀 (~600kcal, ~20g)'] },
+  { name: '간식', time: '기상 후 2~3시간', kcal: 430, protein: 17, color: '#FFCA28', emoji: '🥜',
+    items: ['그릭요거트(풀팩) + 견과류 + 꿀 (~400kcal, ~18g)','또는: PB 샌드위치 (~450kcal, ~15g)'] },
+  { name: '2식 (점심)', time: '기상 후 3~4시간', kcal: 700, protein: 40, color: '#FFA726', emoji: '🍝',
+    items: ['파스타 + 병소스(Rao\'s) + 냉동 치킨 (~700kcal, ~40g)','또는: 즉석밥 + 계란프라이 2개 + 간장 + 참기름 (~500kcal, ~18g)'] },
+  { name: '3식 (저녁)', time: '기상 후 6~7시간', kcal: 850, protein: 43, color: '#66BB6A', emoji: '🥩',
+    items: ['Chipotle 볼 (밥+고기+치즈+사워크림) (~900kcal, ~45g)','또는: Subway 풋롱 (치킨터이야키/미트볼) (~800kcal, ~40g)'] },
+  { name: '4식 (자기 전)', time: '자기 전 1~2시간', kcal: 400, protein: 14, color: '#42A5F5', emoji: '🥛',
+    items: ['우유 큰 컵 + PB 1스푼 쉐이크 (~350kcal, ~15g)','또는: 시리얼 + Whole Milk 큰 그릇 (~450kcal, ~12g)'] },
+];
+
+const TRAINING_DAYS = [0, 1, 3, 4]; // 월,화,목,금 = 주 4회
+
+const WORKOUTS = {
+  0: { type: 'PUSH', name: '가슴/어깨/삼두', exercises: [{name:'벤치프레스',detail:'4x8-10'},{name:'인클라인 덤벨프레스',detail:'3x10-12'},{name:'오버헤드프레스',detail:'4x8-10'},{name:'사이드 레터럴 레이즈',detail:'3x12-15'},{name:'케이블 플라이',detail:'3x12-15'},{name:'트라이셉스 푸쉬다운',detail:'3x10-12'}]},
+  1: { type: 'PULL', name: '등/이두', exercises: [{name:'데드리프트',detail:'4x5-8'},{name:'바벨 로우',detail:'4x8-10'},{name:'랫풀다운',detail:'3x10-12'},{name:'시티드 케이블 로우',detail:'3x10-12'},{name:'페이스풀',detail:'3x15-20'},{name:'바벨 컬',detail:'3x10-12'}]},
+  2: { type: '휴식', name: '수업일 · 스트레칭/유산소', exercises: [{name:'가벼운 걷기/조깅',detail:'20~30분'},{name:'스트레칭/폼롤러',detail:'15분'},{name:'수업 중 간식 챙기기',detail:'견과류/PB샌드위치'}]},
+  3: { type: 'LEGS', name: '하체', exercises: [{name:'바벨 스쿼트',detail:'4x6-10'},{name:'레그프레스',detail:'3x10-12'},{name:'루마니안 데드리프트',detail:'3x10-12'},{name:'레그 익스텐션',detail:'3x12-15'},{name:'레그 컬',detail:'3x12-15'},{name:'카프 레이즈',detail:'4x15-20'}]},
+  4: { type: 'UPPER B', name: '가슴/등 혼합', exercises: [{name:'덤벨 벤치프레스',detail:'4x8-12'},{name:'풀업/친업',detail:'4x최대'},{name:'덤벨 숄더프레스',detail:'4x8-10'},{name:'원암 덤벨 로우',detail:'3x10-12'},{name:'리어 델트 플라이',detail:'3x12-15'},{name:'해머 컬',detail:'3x10-12'}]},
+  5: { type: '휴식', name: '가벼운 유산소/스트레칭', exercises: [{name:'가벼운 걷기/조깅',detail:'30분'},{name:'스트레칭/폼롤러',detail:'15분'},{name:'코어 운동 (플랭크)',detail:'3x30-60초'}]},
+  6: { type: '완전 휴식', name: '근회복 및 성장', exercises: [{name:'완전 휴식',detail:'-'},{name:'충분한 수면 7-9시간',detail:'-'},{name:'체중 측정 & 기록',detail:'-'}]},
+};
+
+const WEEKDAYS_LABEL = ['월','화','수','목','금','토','일'];
+let currentDate = new Date();
+let calView = 'week'; // 'week' or 'month'
+let calOffset = 0; // week or month offset from current
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem('bulk_'+key)) || {}; } catch { return {}; }
+}
+function setData(key, data) {
+  localStorage.setItem('bulk_'+key, JSON.stringify(data));
+}
+function getWeekday(d) {
+  const day = d.getDay();
+  return day === 0 ? 6 : day - 1;
+}
+function sameDay(a, b) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+function getDayScore(d) {
+  const data = getData(dateKey(d));
+  const meals = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+  const workout = data.workoutDone ? 1 : 0;
+  const wAM = data.weightAM || null;
+  const wPM = data.weightPM || null;
+  const weight = wAM && wPM ? +((wAM + wPM) / 2).toFixed(1) : (wAM || wPM || data.weight || null);
+  return { meals, workout, total: meals + workout, max: 6, weightAM: wAM, weightPM: wPM, weight, water: parseFloat(data.water||0) };
+}
+function scoreLevel(score) {
+  if (score.total === 0) return 0;
+  if (score.total <= 2) return 1;
+  if (score.total <= 4) return 2;
+  if (score.total <= 5) return 3;
+  return 4;
+}
+function scoreFillColor(score) {
+  const pct = score.total / score.max;
+  if (pct === 0) return 'var(--text3)';
+  if (pct < 0.4) return '#e53935';
+  if (pct < 0.7) return 'var(--accent2)';
+  return 'var(--accent)';
+}
+
+function changeDate(delta) {
+  currentDate.setDate(currentDate.getDate() + delta);
+  calOffset = 0;
+  render();
+}
+function goToday() {
+  currentDate = new Date();
+  calOffset = 0;
+  render();
+}
+
+// ======== CALENDAR LOGIC ========
+function switchCalView(view) {
+  calView = view;
+  calOffset = 0;
+  document.getElementById('tabWeek').classList.toggle('active', view==='week');
+  document.getElementById('tabMonth').classList.toggle('active', view==='month');
+  document.getElementById('calWeekView').style.display = view==='week' ? '' : 'none';
+  document.getElementById('calMonthView').style.display = view==='month' ? '' : 'none';
+  renderCalendar();
+}
+function navCal(dir) {
+  calOffset += dir;
+  renderCalendar();
+}
+
+function getWeekStart(d, offset) {
+  const dt = new Date(d);
+  const wd = getWeekday(dt);
+  dt.setDate(dt.getDate() - wd + (offset * 7));
+  return dt;
+}
+
+function renderCalendar() {
+  if (calView === 'week') renderWeekView();
+  else renderMonthView();
+}
+
+function renderWeekView() {
+  const today = new Date();
+  const weekStart = getWeekStart(currentDate, calOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  // Nav title
+  const m1 = weekStart.getMonth()+1, d1 = weekStart.getDate();
+  const m2 = weekEnd.getMonth()+1, d2 = weekEnd.getDate();
+  document.getElementById('calNavTitle').textContent =
+    m1 === m2 ? `${m1}월 ${d1}일 ~ ${d2}일` : `${m1}/${d1} ~ ${m2}/${d2}`;
+
+  // Day labels
+  const labelsEl = document.getElementById('weekDayLabels');
+  labelsEl.innerHTML = WEEKDAYS_LABEL.map((w,i) =>
+    `<div class="week-day-label${i===6?' sun':''}">${w}</div>`
+  ).join('');
+
+  // Cells
+  const cellsEl = document.getElementById('weekCells');
+  let cells = '';
+  let weekScores = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const isToday = sameDay(d, today);
+    const isSelected = sameDay(d, currentDate);
+    const score = getDayScore(d);
+    weekScores.push(score);
+    const isSun = i === 6;
+    const pct = Math.round((score.total / score.max) * 100);
+    const fillColor = scoreFillColor(score);
+
+    cells += `<div class="week-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectDay(${d.getFullYear()},${d.getMonth()},${d.getDate()})">
+      <div class="day-num${isSun?' sun':''}">${d.getDate()}</div>
+      <div class="dots">
+        ${score.meals > 0 ? '<div class="dot meal"></div>' : '<div class="dot empty"></div>'}
+        ${score.workout ? '<div class="dot workout"></div>' : '<div class="dot empty"></div>'}
+      </div>
+      <div class="score-bar"><div class="score-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+    </div>`;
+  }
+  cellsEl.innerHTML = cells;
+
+  // Week stats
+  const totalMeals = weekScores.reduce((s,v) => s + v.meals, 0);
+  const totalWorkouts = weekScores.reduce((s,v) => s + v.workout, 0);
+  const weights = weekScores.map(s=>s.weight).filter(Boolean);
+  const avgWeight = weights.length ? (weights.reduce((a,b)=>a+b,0)/weights.length).toFixed(1) : '-';
+  const totalWater = weekScores.reduce((s,v) => s + v.water, 0).toFixed(1);
+  const perfectDays = weekScores.filter(s => s.total >= 5).length;
+
+  document.getElementById('weekDetail').innerHTML = `
+    <div class="week-stats">
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent)">${totalMeals}/35</div><div class="ws-lbl">식사</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent2)">${totalWorkouts}/4</div><div class="ws-lbl">운동</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:var(--accent3)">${avgWeight}</div><div class="ws-lbl">평균 체중</div></div>
+      <div class="week-stat"><div class="ws-val" style="color:#AB47BC">${perfectDays}</div><div class="ws-lbl">완벽한 날</div></div>
+    </div>
+  `;
+}
+
+function renderMonthView() {
+  const today = new Date();
+  const refDate = new Date(currentDate);
+  refDate.setMonth(refDate.getMonth() + calOffset);
+  const year = refDate.getFullYear();
+  const month = refDate.getMonth();
+
+  document.getElementById('calNavTitle').textContent = `${year}년 ${month+1}월`;
+
+  // Day labels
+  const labelsEl = document.getElementById('monthDayLabels');
+  labelsEl.innerHTML = WEEKDAYS_LABEL.map((w,i) =>
+    `<div class="week-day-label${i===6?' sun':''}">${w}</div>`
+  ).join('');
+
+  // First day of month
+  const firstDay = new Date(year, month, 1);
+  const firstWd = getWeekday(firstDay);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  // Cells: fill before, month days, fill after
+  const cellsEl = document.getElementById('monthCells');
+  let cells = '';
+  let allScores = [];
+  let weightData = [];
+
+  // Days before
+  for (let i = 0; i < firstWd; i++) {
+    const d = new Date(year, month, 1 - (firstWd - i));
+    cells += `<div class="month-cell"><div class="ring"><div class="ring-bg lv0"></div><div class="day-num other-month">${d.getDate()}</div></div></div>`;
+  }
+
+  // Month days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day);
+    const isToday = sameDay(d, today);
+    const isSelected = sameDay(d, currentDate);
+    const score = getDayScore(d);
+    allScores.push(score);
+    if (score.weight) weightData.push({ day, weight: score.weight });
+    const lv = scoreLevel(score);
+    const isSun = getWeekday(d) === 6;
+
+    cells += `<div class="month-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectDay(${year},${month},${day})">
+      <div class="ring"><div class="ring-bg lv${lv}"></div><div class="day-num${isSun?' sun':''}" style="position:relative;z-index:1">${day}</div></div>
+    </div>`;
+  }
+
+  // Days after
+  const totalCells = firstWd + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    cells += `<div class="month-cell"><div class="ring"><div class="ring-bg lv0"></div><div class="day-num other-month">${i}</div></div></div>`;
+  }
+  cellsEl.innerHTML = cells;
+
+  // Legend
+  document.getElementById('monthLegend').innerHTML = `
+    <div class="legend-item"><div class="legend-swatch" style="background:transparent;border:1px solid var(--text3)"></div>기록 없음</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.12)"></div>1~2</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.25)"></div>3~4</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(76,175,80,0.45)"></div>5</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div>완벽 (6/6)</div>
+  `;
+
+  // Weight chart
+  const chartWrap = document.getElementById('weightChartWrap');
+  if (weightData.length >= 2) {
+    chartWrap.style.display = '';
+    document.getElementById('weightChartTitle').textContent = `${month+1}월 체중 변화`;
+    renderWeightChart(weightData, daysInMonth);
+  } else {
+    chartWrap.style.display = 'none';
+  }
+
+  // Month stats
+  const totalDays = allScores.length;
+  const activeDays = allScores.filter(s => s.total > 0).length;
+  const totalMeals = allScores.reduce((s,v) => s + v.meals, 0);
+  const totalWorkouts = allScores.reduce((s,v) => s + v.workout, 0);
+  const perfectDays = allScores.filter(s => s.total >= 5).length;
+  const weights = allScores.map(s=>s.weight).filter(Boolean);
+  const firstW = weights.length ? weights[0] : null;
+  const lastW = weights.length ? weights[weights.length-1] : null;
+  const weightChange = firstW && lastW ? (lastW - firstW).toFixed(1) : '-';
+  const mealRate = activeDays > 0 ? Math.round((totalMeals / (activeDays * 5)) * 100) : 0;
+  const workoutRate = activeDays > 0 ? Math.round((totalWorkouts / (activeDays * (6/7))) * 100) : 0;
+
+  document.getElementById('monthDetail').innerHTML = `
+    <div class="month-stats">
+      <div class="month-stat-card">
+        <div class="ms-lbl">식사 달성률</div>
+        <div class="ms-val" style="color:var(--accent)">${mealRate}%</div>
+        <div class="ms-sub">${totalMeals}끼 / ${activeDays * 5}끼</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">운동 달성률</div>
+        <div class="ms-val" style="color:var(--accent2)">${totalWorkouts}회</div>
+        <div class="ms-sub">목표 ${Math.round(daysInMonth * 4/7)}회</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">체중 변화</div>
+        <div class="ms-val" style="color:${weightChange !== '-' && parseFloat(weightChange) >= 0 ? 'var(--accent)' : 'var(--danger)'}">${weightChange !== '-' ? (parseFloat(weightChange) >= 0 ? '+' : '') + weightChange + 'kg' : '-'}</div>
+        <div class="ms-sub">${firstW ? firstW+'kg' : '-'} → ${lastW ? lastW+'kg' : '-'}</div>
+      </div>
+      <div class="month-stat-card">
+        <div class="ms-lbl">완벽한 날</div>
+        <div class="ms-val" style="color:#AB47BC">${perfectDays}일</div>
+        <div class="ms-sub">기록한 날 ${activeDays}일 중</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWeightChart(data, daysInMonth) {
+  const svg = document.getElementById('weightChartSvg');
+  const w = svg.clientWidth || 300;
+  const h = 60;
+  const pad = { t: 8, b: 14, l: 30, r: 8 };
+  const plotW = w - pad.l - pad.r;
+  const plotH = h - pad.t - pad.b;
+
+  const minW = Math.min(...data.map(d=>d.weight)) - 0.5;
+  const maxW = Math.max(...data.map(d=>d.weight)) + 0.5;
+  const rangeW = maxW - minW || 1;
+
+  const pts = data.map(d => ({
+    x: pad.l + (d.day - 1) / (daysInMonth - 1) * plotW,
+    y: pad.t + plotH - ((d.weight - minW) / rangeW) * plotH
+  }));
+
+  let path = pts.map((p,i) => `${i===0?'M':'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  let area = path + ` L${pts[pts.length-1].x.toFixed(1)},${pad.t+plotH} L${pts[0].x.toFixed(1)},${pad.t+plotH} Z`;
+
+  let dots = pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#4CAF50"/>`).join('');
+  let labels = `<text x="${pad.l-4}" y="${pad.t+4}" fill="#9aa0a6" font-size="8" text-anchor="end">${maxW.toFixed(1)}</text>
+    <text x="${pad.l-4}" y="${pad.t+plotH+2}" fill="#9aa0a6" font-size="8" text-anchor="end">${minW.toFixed(1)}</text>`;
+
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.innerHTML = `
+    <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4CAF50" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#4CAF50" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <line x1="${pad.l}" y1="${pad.t+plotH}" x2="${pad.l+plotW}" y2="${pad.t+plotH}" stroke="#2d3e50" stroke-width="0.5"/>
+    <path d="${area}" fill="url(#areaGrad)"/>
+    <path d="${path}" fill="none" stroke="#4CAF50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    ${labels}
+  `;
+}
+
+function selectDay(y, m, d) {
+  currentDate = new Date(y, m, d);
+  calOffset = 0;
+  render();
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======== ORIGINAL FUNCTIONS ========
+function render() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const wd = getWeekday(currentDate);
+
+  document.getElementById('currentDate').textContent = `${currentDate.getMonth()+1}월 ${currentDate.getDate()}일`;
+  document.getElementById('weekday').textContent = WEEKDAYS_LABEL[wd] + '요일';
+
+  // Meals
+  const mealContainer = document.getElementById('mealCards');
+  mealContainer.innerHTML = '';
+  MEALS.forEach((meal, i) => {
+    const checked = data.meals && data.meals[i];
+    const expanded = data.expanded && data.expanded[i];
+    const card = document.createElement('div');
+    card.className = `meal-card${checked ? ' checked' : ''}${expanded ? ' expanded' : ''}`;
+    card.innerHTML = `
+      <div class="meal-top">
+        <div class="meal-info" onclick="toggleExpand(${i})">
+          <div class="meal-icon" style="background:${meal.color}22;color:${meal.color}">${meal.emoji}</div>
+          <div>
+            <div class="meal-name">${meal.name}</div>
+            <div class="meal-time">${meal.time} · ${meal.kcal}kcal · P ${meal.protein}g</div>
+          </div>
+        </div>
+        <div class="check-btn${checked ? ' active' : ''}" onclick="toggleMeal(${i})"></div>
+      </div>
+      <div class="meal-details">
+        ${meal.items.map(it => {
+          const match = it.match(/^(.+?)\s*\((.+)\)$/);
+          return match ? `<div class="meal-item"><span>${match[1]}</span><span>${match[2]}</span></div>` : `<div class="meal-item"><span>${it}</span><span></span></div>`;
+        }).join('')}
+      </div>
+    `;
+    mealContainer.appendChild(card);
+  });
+
+  // Workout
+  const workout = WORKOUTS[wd];
+  const wContainer = document.getElementById('workoutCard');
+  const wChecked = data.workoutDone;
+  const exChecks = data.exercises || {};
+  wContainer.innerHTML = `
+    <div class="workout-card${wChecked ? ' checked' : ''}">
+      <div class="workout-header">
+        <div><div class="workout-type">${workout.type}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${workout.name}</div></div>
+        <div class="check-btn${wChecked ? ' active' : ''}" onclick="toggleWorkout()"></div>
+      </div>
+      <div class="workout-exercises">
+        ${workout.exercises.map((ex, i) => `
+          <div class="exercise-row">
+            <div class="ex-check${exChecks[i] ? ' active' : ''}" onclick="toggleExercise(${i})"></div>
+            <span class="ex-name">${ex.name}</span>
+            <span class="ex-detail">${ex.detail}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('weightAMInput').value = data.weightAM || '';
+  document.getElementById('weightPMInput').value = data.weightPM || '';
+  document.getElementById('waterInput').value = data.water || '0.0';
+  document.getElementById('memoInput').value = data.memo || '';
+
+  updateSummary();
+  updateStreak();
+  renderCalendar();
+}
+
+function toggleMeal(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.meals) data.meals = {};
+  data.meals[i] = !data.meals[i];
+  setData(key, data);
+  render();
+}
+function toggleExpand(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.expanded) data.expanded = {};
+  data.expanded[i] = !data.expanded[i];
+  setData(key, data);
+  render();
+}
+function toggleWorkout() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  data.workoutDone = !data.workoutDone;
+  setData(key, data);
+  render();
+}
+function toggleExercise(i) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  if (!data.exercises) data.exercises = {};
+  data.exercises[i] = !data.exercises[i];
+  setData(key, data);
+  render();
+}
+function adjustWater(delta) {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  let w = parseFloat(data.water || 0) + delta;
+  if (w < 0) w = 0;
+  data.water = w.toFixed(1);
+  setData(key, data);
+  render();
+}
+function saveData() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const wAM = document.getElementById('weightAMInput').value;
+  const wPM = document.getElementById('weightPMInput').value;
+  if (wAM) data.weightAM = parseFloat(wAM); else delete data.weightAM;
+  if (wPM) data.weightPM = parseFloat(wPM); else delete data.weightPM;
+  data.memo = document.getElementById('memoInput').value;
+  setData(key, data);
+  updateSummary();
+  renderCalendar();
+}
+function updateSummary() {
+  const key = dateKey(currentDate);
+  const data = getData(key);
+  const mealCount = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+  const totalTasks = 5 + (TRAINING_DAYS.includes(getWeekday(currentDate)) ? 1 : 0);
+  const doneTasks = mealCount + (data.workoutDone ? 1 : 0);
+  document.getElementById('sumMeals').textContent = `${mealCount}/5`;
+  document.getElementById('sumWorkout').textContent = data.workoutDone ? 'O' : '-';
+  document.getElementById('sumWater').textContent = `${data.water || 0}L`;
+  document.getElementById('sumWeightAM').textContent = data.weightAM ? `${data.weightAM}` : '-';
+  document.getElementById('sumWeightPM').textContent = data.weightPM ? `${data.weightPM}` : '-';
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  document.getElementById('dayProgress').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${doneTasks} / ${totalTasks} 완료 (${pct}%)`;
+}
+function updateStreak() {
+  let streak = 0;
+  const d = new Date(currentDate);
+  d.setDate(d.getDate() - 1);
+  while (true) {
+    const k = dateKey(d);
+    const data = getData(k);
+    const mealCount = data.meals ? Object.values(data.meals).filter(Boolean).length : 0;
+    if (mealCount >= 3) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+    if (streak > 365) break;
+  }
+  const todayData = getData(dateKey(currentDate));
+  const todayMeals = todayData.meals ? Object.values(todayData.meals).filter(Boolean).length : 0;
+  if (todayMeals >= 3) streak++;
+  document.getElementById('streakBadge').textContent = `${streak}일 연속`;
+}
+
+// ======== PAGE SWITCHING ========
+function switchPage(page) {
+  document.getElementById('trackerPage').classList.toggle('active', page === 'tracker');
+  document.getElementById('guidePage').classList.toggle('active', page === 'guide');
+  document.getElementById('summaryBar').style.display = page === 'tracker' ? '' : 'none';
+  document.getElementById('navTracker').classList.toggle('active', page === 'tracker');
+  document.getElementById('navGuide').classList.toggle('active', page === 'guide');
+  window.scrollTo({ top: 0 });
+}
+
+render();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
