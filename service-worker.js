@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bulkup-tracker-v1';
+const CACHE_NAME = 'bulkup-tracker-v2';
 const APP_FILES = [
   './',
   './index.html',
